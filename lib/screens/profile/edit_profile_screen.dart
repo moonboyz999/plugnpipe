@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../../widgets/main_bottom_nav_bar.dart';
 import '../student/student_home_screen.dart';
 import '../support/support_chat_screen.dart';
 import '../common/notification_screen.dart';
 import 'student_profile_screen.dart';
 import '../../services/user_data_service.dart';
-
-// To use real image picking, add this to pubspec.yaml:
-// dependencies:
-//   image_picker: ^1.0.4
-//
-// Then import: import 'package:image_picker/image_picker.dart';
-// And use: final ImagePicker _picker = ImagePicker();
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -27,6 +24,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController idController = TextEditingController();
   String? profileImagePath;
   final UserDataService _userDataService = UserDataService();
+  final ImagePicker _picker = ImagePicker();
+  File? _imageFile;
 
   @override
   void initState() {
@@ -108,53 +107,135 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _selectImageFromCamera() {
-    // Simulate camera selection
-    setState(() {
-      profileImagePath = 'camera_image'; // Placeholder for camera image
-    });
-    _userDataService.updateProfileImage(profileImagePath);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Photo taken from camera!'),
-        backgroundColor: Color(0xFFFFA726),
-      ),
-    );
+  void _selectImageFromCamera() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1800,
+        maxHeight: 1800,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        final String savedPath = await _saveImageToLocalStorage(pickedFile);
+        setState(() {
+          profileImagePath = savedPath;
+          _imageFile = File(savedPath);
+        });
+        _userDataService.updateProfileImage(profileImagePath);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photo taken from camera!'),
+              backgroundColor: Color(0xFFFFA726),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error taking photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _selectImageFromGallery() {
-    // Simulate gallery selection
-    setState(() {
-      profileImagePath = 'gallery_image'; // Placeholder for gallery image
-    });
-    _userDataService.updateProfileImage(profileImagePath);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Photo selected from gallery!'),
-        backgroundColor: Color(0xFFFFA726),
-      ),
-    );
+  void _selectImageFromGallery() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1800,
+        maxHeight: 1800,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        final String savedPath = await _saveImageToLocalStorage(pickedFile);
+        setState(() {
+          profileImagePath = savedPath;
+          _imageFile = File(savedPath);
+        });
+        _userDataService.updateProfileImage(profileImagePath);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photo selected from gallery!'),
+              backgroundColor: Color(0xFFFFA726),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _removeImage() {
+  Future<String> _saveImageToLocalStorage(XFile pickedFile) async {
+    try {
+      final Directory appDir = await getApplicationDocumentsDirectory();
+      final String fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String savedPath = '${appDir.path}/$fileName';
+      
+      await File(pickedFile.path).copy(savedPath);
+      return savedPath;
+    } catch (e) {
+      throw Exception('Failed to save image: $e');
+    }
+  }
+
+  void _removeImage() async {
+    try {
+      // Delete the physical file if it exists
+      if (profileImagePath != null && File(profileImagePath!).existsSync()) {
+        await File(profileImagePath!).delete();
+      }
+    } catch (e) {
+      print('Error deleting image file: $e');
+    }
+    
     setState(() {
       profileImagePath = null;
+      _imageFile = null;
     });
     _userDataService.updateProfileImage(null);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile photo removed'),
-        backgroundColor: Colors.grey,
-      ),
-    );
-  }
-
-  void _saveProfile() {
-    // Validate email format
-    if (!emailController.text.contains('@')) {
+    
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a valid email address'),
+          content: Text('Profile photo removed'),
+          backgroundColor: Colors.grey,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (kDebugMode) {
+      print('🔄 Saving profile with data:');
+      print('   Name: ${nameController.text.trim()}');
+      print('   Email: ${emailController.text.trim()}');
+      print('   Phone: ${phoneController.text.trim()}');
+      print('   ID: ${idController.text.trim()}');
+    }
+    
+    // Validate user ID format
+    if (emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid user ID'),
           backgroundColor: Colors.red,
         ),
       );
@@ -173,7 +254,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     // Save data to the service
-    _userDataService.updateUserData(
+    await _userDataService.updateUserData(
       fullName: nameController.text.trim(),
       email: emailController.text.trim(),
       phoneNumber: phoneController.text.trim(),
@@ -181,24 +262,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       profileImagePath: profileImagePath,
     );
 
+    if (kDebugMode) {
+      print('✅ Profile update completed');
+    }
+
     // Save logic (e.g., send to backend or local storage)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Profile saved successfully!'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'View Profile',
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StudentProfileScreen(),
-              ),
-            );
-          },
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Profile saved successfully!'),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'View Profile',
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const StudentProfileScreen(),
+                ),
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -264,64 +351,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: const Color(0xFFFFA726),
-                          backgroundImage: profileImagePath != null
-                              ? null // We'll use a different approach for real images
+                          backgroundImage: profileImagePath != null && File(profileImagePath!).existsSync()
+                              ? FileImage(File(profileImagePath!))
                               : null,
-                          child: profileImagePath == null
+                          child: (profileImagePath == null || (profileImagePath != null && !File(profileImagePath!).existsSync()))
                               ? const Icon(
                                   Icons.person,
                                   color: Colors.white,
                                   size: 50,
                                 )
-                              : Stack(
-                                  children: [
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.green[100],
-                                        border: Border.all(
-                                          color: Colors.green,
-                                          width: 3,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green,
-                                        size: 40,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 5,
-                                      left: 10,
-                                      right: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          profileImagePath == 'camera_image'
-                                              ? 'Camera'
-                                              : 'Gallery',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              : null,
                         ),
                         Positioned(
                           bottom: 0,
@@ -399,7 +438,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       decoration: const InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'User ID',
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'completed_task_detail_screen.dart';
 import '../../widgets/main_bottom_nav_bar.dart';
 import '../../services/task_service.dart';
+import '../../services/local_auth_service_demo.dart';
 import 'tech_home_screen.dart';
 import 'tech_notification_screen.dart';
 import 'tech_profile_screen.dart';
@@ -18,9 +19,21 @@ class _WorkHistoryScreenState extends State<WorkHistoryScreen> {
   String _selectedFilter = 'All';
   final int _currentNavIndex = 0; // For navigation bar
   final TaskService _taskService = TaskService();
+  final LocalAuthService _authService = LocalAuthService();
 
-  // Get completed tasks with submitted reports from TaskService
-  List<ServiceTask> get completedTasks => _taskService.getCompletedTasksWithSubmittedReports();
+  // Get completed tasks with submitted reports from TaskService filtered by current technician
+  List<ServiceTask> get completedTasks {
+    final currentUser = _authService.currentUser;
+    final allCompleted = _taskService.getCompletedTasksWithSubmittedReports();
+    
+    if (currentUser != null) {
+      // Filter by current technician
+      return allCompleted.where((task) => 
+        task.assignedTechnicianId == currentUser['userId']
+      ).toList();
+    }
+    return allCompleted;
+  }
   List<ServiceTask> get filteredTasks {
     List<ServiceTask> filtered = completedTasks;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../../services/user_data_service.dart';
 import 'edit_profile_screen.dart';
 import '../auth/login_screen.dart';
@@ -94,10 +95,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         shape: BoxShape.circle,
                       ),
                       padding: const EdgeInsets.all(16),
-                      child: _userDataService.profileImagePath != null
+                      child: _userDataService.profileImagePath != null && File(_userDataService.profileImagePath!).existsSync()
                           ? ClipOval(
-                              child: Image.asset(
-                                _userDataService.profileImagePath!,
+                              child: Image.file(
+                                File(_userDataService.profileImagePath!),
                                 width: 50,
                                 height: 50,
                                 fit: BoxFit.cover,
@@ -175,8 +176,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.email, color: Color(0xFFFFA726)),
-                    title: const Text('Email'),
+                    leading: const Icon(Icons.person, color: Color(0xFFFFA726)),
+                    title: const Text('User ID'),
                     subtitle: Text(_userDataService.email),
                   ),
                   const Divider(height: 1),
@@ -184,20 +185,6 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     leading: const Icon(Icons.school, color: Color(0xFFFFA726)),
                     title: const Text('Student ID'),
                     subtitle: Text(_userDataService.studentId),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.home, color: Color(0xFFFFA726)),
-                    title: const Text('Additional Info'),
-                    subtitle: const Text('Tap to edit additional information'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      );
-                    },
                   ),
                 ],
               ),

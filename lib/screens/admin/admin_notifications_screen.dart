@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../services/notification_service.dart';
 import '../../services/local_supabase_helper.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
@@ -10,7 +9,6 @@ class AdminNotificationsScreen extends StatefulWidget {
 }
 
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
-  final NotificationService _notificationService = NotificationService();
   final LocalSupabaseHelper _dbHelper = LocalSupabaseHelper();
   List<Map<String, dynamic>> _systemNotifications = [];
   bool _isLoading = true;

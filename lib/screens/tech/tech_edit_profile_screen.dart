@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../widgets/main_bottom_nav_bar.dart';
 import 'tech_home_screen.dart';
 import 'tech_notification_screen.dart';
@@ -48,9 +49,39 @@ class _TechEditProfileScreenState extends State<TechEditProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
+    if (kDebugMode) {
+      print('🔄 Saving tech profile with data:');
+      print('   Name: ${nameController.text.trim()}');
+      print('   Email: ${emailController.text.trim()}');
+      print('   Phone: ${phoneController.text.trim()}');
+      print('   ID: ${idController.text.trim()}');
+    }
+    
+    // Validate user ID format
+    if (emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid user ID'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validate phone number (basic check)
+    if (phoneController.text.trim().length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid phone number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Update user data service
-    _userDataService.updateUserData(
+    await _userDataService.updateUserData(
       fullName: nameController.text.trim(),
       email: emailController.text.trim(),
       phoneNumber: phoneController.text.trim(),
@@ -58,24 +89,30 @@ class _TechEditProfileScreenState extends State<TechEditProfileScreen> {
       profileImagePath: profileImagePath,
     );
 
+    if (kDebugMode) {
+      print('✅ Tech profile update completed');
+    }
+
     // Save logic (e.g., send to backend or local storage)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Profile saved successfully!'),
-        backgroundColor: Colors.green,
-        action: SnackBarAction(
-          label: 'View Profile',
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const TechProfileScreen(),
-              ),
-            );
-          },
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Profile saved successfully!'),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'View Profile',
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TechProfileScreen(),
+                ),
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _showImageOptions() {
@@ -280,13 +317,13 @@ class _TechEditProfileScreenState extends State<TechEditProfileScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Email
+                    // User ID
                     TextFormField(
                       controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email, color: Color(0xFFFFA726)),
+                        labelText: 'User ID',
+                        prefixIcon: Icon(Icons.person, color: Color(0xFFFFA726)),
                         border: OutlineInputBorder(),
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Color(0xFFFFA726)),

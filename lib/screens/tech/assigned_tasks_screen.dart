@@ -86,6 +86,11 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   List<Map<String, dynamic>> get filteredRequests {
     List<Map<String, dynamic>> filtered = _requests;
 
+    // Exclude urgent/emergency requests from assigned tasks
+    filtered = filtered.where((request) => 
+      request['priority']?.toString().toLowerCase() != 'urgent' && 
+      request['priority']?.toString().toLowerCase() != 'emergency').toList();
+
     // Apply search filter
     if (searchController.text.isNotEmpty) {
       filtered = filtered

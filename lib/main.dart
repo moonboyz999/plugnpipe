@@ -5,7 +5,7 @@ import 'screens/student/student_main_scaffold.dart';
 import 'screens/tech/tech_main_scaffold.dart';
 import 'screens/admin/admin_main_scaffold.dart';
 import 'services/local_database.dart';
-import 'services/local_auth_service_demo.dart';
+import 'services/local_auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +20,10 @@ void main() async {
     await LocalDatabase.instance.initialize();
     print('✅ Database reinitialized with fresh schema');
   }
+
+  // Initialize Auth Service with default users AFTER database is ready
+  final authService = LocalAuthService();
+  await authService.init();
 
   if (kDebugMode) print('✅ Local Database initialized successfully');
 
@@ -62,6 +66,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _determineInitialScreen() async {
     try {
+      // Initialize auth service first
+      await _authService.init();
+      
       final currentUser = await _authService.getCurrentUser();
 
       if (currentUser == null) {

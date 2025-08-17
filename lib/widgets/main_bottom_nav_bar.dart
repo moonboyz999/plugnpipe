@@ -304,7 +304,7 @@ class AdminNavBar extends StatelessWidget {
           _navItem(Icons.people, 'Users', currentIndex == 1),
           _notificationNavItem(currentIndex == 2, isStudent: false),
           _navItem(Icons.assessment, 'Reports', currentIndex == 3),
-          _navItem(Icons.settings, 'Settings', currentIndex == 4),
+          _navItem(Icons.person, 'Profile Settings', currentIndex == 4),
         ],
       ),
     );

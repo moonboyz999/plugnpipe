@@ -4,7 +4,7 @@ import 'admin_home_screen.dart';
 import 'admin_users_screen.dart';
 import 'admin_notifications_screen.dart';
 import 'admin_reports_screen.dart';
-import 'admin_settings_screen.dart';
+import 'admin_profile_screen.dart';
 
 class AdminMainScaffold extends StatefulWidget {
   const AdminMainScaffold({super.key});
@@ -21,7 +21,7 @@ class _AdminMainScaffoldState extends State<AdminMainScaffold> {
     const AdminUsersScreen(), // Index 1: Users
     const AdminNotificationsScreen(), // Index 2: Notifications
     const AdminReportsScreen(), // Index 3: Reports
-    const AdminSettingsScreen(), // Index 4: Settings
+    const AdminProfileScreen(), // Index 4: Profile Settings
   ];
 
   @override

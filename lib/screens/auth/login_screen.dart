@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../student/student_main_scaffold.dart';
 import '../tech/tech_main_scaffold.dart';
 import '../admin/admin_main_scaffold.dart';
-import 'register_screen_new.dart';
-import 'reset_password_screen.dart';
-import '../../services/local_auth_service_demo.dart';
+import 'register_screen.dart';
+import '../../services/local_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,10 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       // Use actual authentication service with predefined accounts
-      bool success = await _authService.signIn(email: email, password: password);
+      bool success = await _authService.login(email, password);
 
       if (success && mounted) {
-        final currentUser = _authService.currentUser;
+        final currentUser = _authService.currentUserDoc;
         final role = currentUser?['role'] ?? 'student';
         
         // Navigate to appropriate screen based on role
@@ -79,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else if (mounted) {
         setState(() {
-          _errorMessage = 'Invalid email or password. Please use predefined accounts.';
+          _errorMessage = 'Invalid user ID or password. Please use predefined accounts.';
         });
       }
     } catch (e) {
@@ -101,6 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -114,14 +114,20 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height - 
+                          MediaQuery.of(context).padding.top - 
+                          MediaQuery.of(context).padding.bottom - 48,
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 60),
                 // Logo Section
-                SvgPicture.asset(
-                  'assets/images/Logo.svg',
-                  height: 120,
-                  width: 120,
+                Image.asset(
+                  'assets/images/PlugnPipe Logo .png',
+                  height: 250,
+                  width: 250,
                 ),
                 const SizedBox(height: 40),
                 // Subtitle
@@ -160,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextField(
                         controller: _emailController,
                         decoration: const InputDecoration(
-                          hintText: 'Enter your email',
+                          hintText: 'Enter your user id',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 16,
@@ -265,28 +271,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Reset Password Button
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ResetPasswordScreen(),
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Reset Password',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     // Error Message
                     if (_errorMessage.isNotEmpty)
                       Container(
@@ -320,82 +304,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    
-                    const SizedBox(height: 20),
-                    // Demo Accounts Helper
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '📋 Demo Accounts',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildAccountInfo('👨‍🎓 Student', 'student@test.com', 'student123'),
-                          _buildAccountInfo('🔧 Technician', 'tech@test.com', 'tech123'),
-                          _buildAccountInfo('👨‍💼 Admin', 'admin@test.com', 'admin123'),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAccountInfo(String role, String email, String password) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                Text(
-                  '$email / $password',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              _emailController.text = email;
-              _passwordController.text = password;
-            },
-            icon: const Icon(Icons.content_copy, size: 16, color: Colors.orange),
-            tooltip: 'Fill credentials',
-          ),
-        ],
       ),
     );
   }

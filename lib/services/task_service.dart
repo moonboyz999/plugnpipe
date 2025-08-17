@@ -102,11 +102,14 @@ class TaskService {
   static final TaskService _instance = TaskService._internal();
   factory TaskService() => _instance;
   
-  bool _isInitialized = false;
-  
   TaskService._internal() {
-    // Service initialized without sample data
-    _isInitialized = true;
+    // Service initialized without sample data for production
+  }
+
+  // Initialize the service
+  Future<void> init() async {
+    // Production initialization - no sample data
+    print('TaskService initialized for production');
   }
 
   // Application data
@@ -414,5 +417,87 @@ class TaskService {
   // Clear all notifications
   void clearAllNotifications() {
     _notifications.clear();
+  }
+
+  // Additional stub methods for compatibility
+  Future<void> initializeSampleData() async {
+    // Production mode - no sample data
+    print('Sample data initialization disabled in production');
+  }
+
+  Future<void> addSampleUrgentTasks() async {
+    // Production mode - no sample data
+    print('Sample urgent tasks disabled in production');
+  }
+
+  List<ServiceTask> getUrgentTasks() {
+    return _tasks.where((task) => task.isUrgent || task.priority == TaskPriority.urgent).toList();
+  }
+
+  List<ServiceTask> getTasksForTechnician(String technicianId) {
+    return _tasks.where((task) => task.assignedTechnicianId == technicianId).toList();
+  }
+
+  // Get all reports
+  Map<String, StatusReport> get reports => _reports;
+
+  // Get task by ID
+  ServiceTask? getTaskById(String taskId) {
+    try {
+      return _tasks.firstWhere((task) => task.id == taskId);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Accept urgent task
+  void acceptUrgentTask(String taskId, String technicianId) {
+    final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
+    if (taskIndex != -1) {
+      final oldTask = _tasks[taskIndex];
+      final updatedTask = ServiceTask(
+        id: oldTask.id,
+        title: oldTask.title,
+        description: oldTask.description,
+        category: oldTask.category,
+        priority: oldTask.priority,
+        status: TaskStatus.assigned,
+        location: oldTask.location,
+        building: oldTask.building,
+        roomNumber: oldTask.roomNumber,
+        assignedTechnicianId: technicianId,
+        createdAt: oldTask.createdAt,
+        estimatedCompletion: oldTask.estimatedCompletion,
+        actualCompletion: oldTask.actualCompletion,
+        requiresReport: oldTask.requiresReport,
+        isUrgent: oldTask.isUrgent,
+      );
+      _tasks[taskIndex] = updatedTask;
+
+      _notifications.add(
+        TaskNotification(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: 'Urgent Task Accepted',
+          message: 'You have accepted urgent task: ${oldTask.title}',
+          type: TaskNotificationType.taskUpdate,
+          createdAt: DateTime.now(),
+          taskId: taskId,
+        ),
+      );
+    }
+  }
+
+  // Reject urgent task
+  void rejectUrgentTask(String taskId, String technicianId) {
+    _notifications.add(
+      TaskNotification(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: 'Urgent Task Rejected',
+        message: 'Task will be reassigned to another technician',
+        type: TaskNotificationType.taskUpdate,
+        createdAt: DateTime.now(),
+        taskId: taskId,
+      ),
+    );
   }
 }

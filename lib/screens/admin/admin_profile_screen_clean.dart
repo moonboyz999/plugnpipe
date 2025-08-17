@@ -184,8 +184,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.person, color: Color(0xFFFFA726)),
-                    title: const Text('User ID'),
+                    leading: const Icon(Icons.email, color: Color(0xFFFFA726)),
+                    title: const Text('Email'),
                     subtitle: Text(
                       _userDataService.email.isNotEmpty
                           ? _userDataService.email
@@ -210,6 +210,20 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     leading: const Icon(Icons.work, color: Color(0xFFFFA726)),
                     title: const Text('Department'),
                     subtitle: const Text('System Administration'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.home, color: Color(0xFFFFA726)),
+                    title: const Text('Additional Info'),
+                    subtitle: const Text('Tap to edit additional information'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

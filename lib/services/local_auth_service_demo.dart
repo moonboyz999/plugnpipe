@@ -188,13 +188,26 @@ class LocalAuthService {
   // Update profile
   Future<void> updateProfile({String? name, Map<String, dynamic>? data}) async {
     if (_currentUser != null) {
+      final email = _currentUser!['email'];
+      
       if (name != null) {
         _currentUser!['name'] = name;
       }
       if (data != null) {
         _currentUser!.addAll(data);
       }
-      print('✅ Profile updated');
+      
+      // Also update the original account in the accounts map
+      if (email != null && _accounts.containsKey(email)) {
+        if (name != null) {
+          _accounts[email]!['name'] = name;
+        }
+        if (data != null) {
+          _accounts[email]!.addAll(data);
+        }
+      }
+      
+      print('✅ Profile updated for ${_currentUser!['name']}');
     }
   }
 

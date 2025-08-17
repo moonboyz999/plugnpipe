@@ -21,6 +21,10 @@ class LocalAuthService extends ChangeNotifier {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     await _loadLocalUsers();
+    
+    // Create default users if none exist
+    await createDefaultUsers();
+    
     if (kDebugMode) {
       print(
         'LocalAuthService initialized (local users: ${_localUsers.length})',
@@ -38,12 +42,20 @@ class LocalAuthService extends ChangeNotifier {
   }
 
   Future<void> createDefaultUsers() async {
+    if (kDebugMode) {
+      print('🔄 Checking if default users need to be created. Current users: ${_localUsers.length}');
+    }
+    
     if (_localUsers.isEmpty) {
+      if (kDebugMode) {
+        print('🔄 Creating default users...');
+      }
+      
       await registerLocalUser(
         userId: 'student123',
         password: 'password123',
         name: 'Student User',
-        phone: '555-0001',
+        phone: '+6012345677',
         role: UserRole.student,
       );
 
@@ -51,7 +63,7 @@ class LocalAuthService extends ChangeNotifier {
         userId: 'tech123',
         password: 'password123',
         name: 'Technician User',
-        phone: '555-0002',
+        phone: '6012345677',
         role: UserRole.technician,
       );
 
@@ -59,14 +71,19 @@ class LocalAuthService extends ChangeNotifier {
         userId: 'admin123',
         password: 'password123',
         name: 'Admin User',
-        phone: '555-0003',
+        phone: '6012345677',
         role: UserRole.admin,
       );
 
       if (kDebugMode) {
         print(
-          'Created default users: student123, tech123, admin123 (all password: password123)',
+          '✅ Created default users: student123, tech123, admin123 (all password: password123)',
         );
+        print('📊 Total users now: ${_localUsers.length}');
+      }
+    } else {
+      if (kDebugMode) {
+        print('✅ Default users already exist: ${_localUsers.length} users');
       }
     }
   }
@@ -128,6 +145,14 @@ class LocalAuthService extends ChangeNotifier {
 
   Future<bool> login(String userId, String password) async {
     try {
+      if (kDebugMode) {
+        print('🔐 Login attempt for userId: $userId');
+        print('📊 Available users: ${_localUsers.length}');
+        for (var user in _localUsers) {
+          print('   - ${user['userId']} (${user['role']})');
+        }
+      }
+      
       // Check local users first
       final user = _localUsers.firstWhere(
         (user) => user['userId'] == userId && user['password'] == password,
@@ -142,14 +167,14 @@ class LocalAuthService extends ChangeNotifier {
         await _prefs?.setString('current_user', json.encode(user));
 
         notifyListeners();
-        if (kDebugMode) print('Login successful for user: $userId');
+        if (kDebugMode) print('✅ Login successful for user: $userId');
         return true;
       }
 
-      if (kDebugMode) print('Login failed for user: $userId');
+      if (kDebugMode) print('❌ Login failed for user: $userId');
       return false;
     } catch (e) {
-      if (kDebugMode) print('Login error: $e');
+      if (kDebugMode) print('❌ Login error: $e');
       return false;
     }
   }
@@ -202,5 +227,40 @@ class LocalAuthService extends ChangeNotifier {
     }
     
     return null;
+  }
+
+  // Update current user data and persist changes
+  Future<bool> updateCurrentUserData(Map<String, dynamic> updatedData) async {
+    try {
+      if (_currentUser == null) return false;
+
+      // Find user in local storage and update
+      final userIndex = _localUsers.indexWhere(
+        (user) => user['userId'] == _currentUser!['userId']
+      );
+
+      if (userIndex != -1) {
+        // Update the user in local storage
+        _localUsers[userIndex] = {..._localUsers[userIndex], ...updatedData};
+        
+        // Update current user reference
+        _currentUser = _localUsers[userIndex];
+        
+        // Save to SharedPreferences
+        await _saveLocalUsers();
+        await _prefs?.setString('current_user', json.encode(_currentUser));
+        
+        notifyListeners();
+        if (kDebugMode) {
+          print('User data updated for: ${_currentUser!['userId']}');
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('Error updating user data: $e');
+      return false;
+    }
   }
 }
