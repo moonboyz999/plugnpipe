@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../services/notification_service.dart';
+import '../../services/local_supabase_helper.dart';
+import '../../services/local_auth_service_demo.dart';
 
 class WashingMachineScheduleScreen extends StatefulWidget {
   final String location;
@@ -195,41 +197,108 @@ class _WashingMachineScheduleScreenState
                   ),
                 ),
                 onPressed: (_selectedDay != null && _selectedTimeSlot != null)
-                    ? () {
-                        // Add notification for pending service
-                        NotificationService().addServiceBooking(
-                          serviceType: 'Washing Machine Repair',
-                          location: widget.location,
-                          date:
-                              '${_selectedDay!.day}/${_selectedDay!.month}/${_selectedDay!.year}',
-                          time: _selectedTimeSlot!,
-                          issues: widget.issues,
-                        );
+                    ? () async {
+                        try {
+                          // Create the service request using LocalSupabaseHelper
+                          final mockHelper = LocalSupabaseHelper();
 
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Schedule Confirmed'),
-                            content: Text(
-                              'Location: ${widget.location}\n'
-                              'Service Type: ${widget.serviceType}\n'
+                          final description =
+                              'Washing Machine repair service requested.\n'
                               'Issues: ${widget.issues.join(", ")}\n'
-                              'Date: ${_selectedDay!.toLocal().toString().split(' ')[0]}\n'
-                              'Time: $_selectedTimeSlot',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                  Navigator.of(
-                                    context,
-                                  ).popUntil((route) => route.isFirst);
-                                },
-                                child: const Text('OK'),
+                              'Preferred Date: ${_selectedDay!.toLocal().toString().split(' ')[0]}\n'
+                              'Preferred Time: $_selectedTimeSlot';
+
+                          // Parse location for building and room
+                          String building;
+                          String room;
+                          
+                          if (widget.location.contains('Kitchen')) {
+                            building = widget.location.replaceAll(' Kitchen', '');
+                            room = 'Kitchen';
+                          } else if (widget.location.contains('Laundry')) {
+                            building = widget.location.replaceAll(' Laundry', '');
+                            room = 'Laundry';
+                          } else {
+                            final locationParts = widget.location.split(' ');
+                            if (locationParts.length >= 2) {
+                              building = locationParts.sublist(0, locationParts.length - 1).join(' ');
+                              room = locationParts.last;
+                            } else {
+                              building = widget.location;
+                              room = 'General Area';
+                            }
+                          }
+
+                          // Get current user ID from auth service
+                          final authService = LocalAuthService();
+                          final currentUser = authService.currentUser;
+                          final currentUserId = currentUser?['userId'] ?? 'student_001';
+
+                          await mockHelper.createRequest({
+                            'userId': currentUserId,
+                            'title': 'Washing Machine Repair Service',
+                            'description': description,
+                            'category': 'appliance',
+                            'priority': 'medium',
+                            'location': widget.location,
+                            'building': building,
+                            'room': room,
+                            'requiresReport': false,
+                          });
+
+                          // Also add to notification service for compatibility
+                          NotificationService().addServiceBooking(
+                            serviceType: 'Washing Machine Repair',
+                            location: widget.location,
+                            date:
+                                '${_selectedDay!.day}/${_selectedDay!.month}/${_selectedDay!.year}',
+                            time: _selectedTimeSlot!,
+                            issues: widget.issues,
+                          );
+
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Request Submitted Successfully!'),
+                                content: Text(
+                                  'Your washing machine repair request has been submitted successfully and notifications have been sent to available technicians.\n\n'
+                                  'Location: ${widget.location}\n'
+                                  'Service Type: ${widget.serviceType}\n'
+                                  'Issues: ${widget.issues.join(", ")}\n'
+                                  'Preferred Date: ${_selectedDay!.toLocal().toString().split(' ')[0]}\n'
+                                  'Preferred Time: $_selectedTimeSlot\n\n'
+                                  'Technicians can now accept or reject your request. You will receive a notification once a technician accepts your task.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      Navigator.of(context).popUntil((route) => route.isFirst);
+                                    },
+                                    child: const Text('OK'),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Error'),
+                                content: Text('Failed to submit request: $e'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
                       }
                     : null,
                 child: const Text('Continue to Summary'),

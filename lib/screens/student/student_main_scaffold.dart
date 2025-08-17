@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/main_bottom_nav_bar.dart';
 import 'student_home_screen.dart';
 import '../support/support_chat_screen.dart';
-import '../common/notification_screen.dart';
+import 'student_notifications_screen.dart';
 import '../profile/student_profile_screen.dart';
 
 class StudentMainScaffold extends StatefulWidget {
@@ -18,7 +18,7 @@ class _StudentMainScaffoldState extends State<StudentMainScaffold> {
   final List<Widget> _screens = const [
     StudentHomeScreen(),
     SupportChatScreen(),
-    NotificationScreen(),
+    StudentNotificationsScreen(),
     StudentProfileScreen(),
   ];
 

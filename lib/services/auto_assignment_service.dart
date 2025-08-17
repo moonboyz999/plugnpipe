@@ -1,5 +1,7 @@
 import 'local_database.dart';
 import 'notification_service.dart';
+import 'schedule_service.dart';
+import 'task_service.dart';
 
 class TaskNotificationService {
   static final TaskNotificationService _instance = TaskNotificationService._internal();
@@ -8,6 +10,7 @@ class TaskNotificationService {
 
   final LocalDatabase _db = LocalDatabase.instance;
   final NotificationService _notificationService = NotificationService();
+  final ScheduleService _scheduleService = ScheduleService();
 
   // Send task notification to all available technicians
   Future<bool> notifyAvailableTechnicians(String requestId) async {
@@ -158,12 +161,69 @@ class TaskNotificationService {
     }, where: {'id': requestId});
     
     // Create a task record
-    return await _db.insert('tasks', {
+    final taskResult = await _db.insert('tasks', {
       'requestId': requestId,
       'technicianId': technicianId,
       'status': 'assigned',
       'assignedAt': DateTime.now().toIso8601String(),
     });
+
+    // Create ServiceTask object and add to schedule
+    final serviceTask = ServiceTask(
+      id: requestId, // Use requestId as task ID for consistency
+      title: request['title'] ?? 'Service Request',
+      description: request['description'] ?? 'No description',
+      category: _mapCategoryStringToEnum(request['category']),
+      priority: _mapPriorityStringToEnum(request['priority']),
+      status: TaskStatus.assigned,
+      location: request['location'] ?? 'Unknown Location',
+      building: request['building'],
+      roomNumber: request['room'],
+      assignedTechnicianId: technicianId,
+      createdAt: DateTime.parse(request['createdAt']),
+      requiresReport: request['requiresReport'] ?? true,
+    );
+
+    // Add to schedule with default time (can be customized later)
+    _scheduleService.addTaskToSchedule(serviceTask, '09:00');
+    
+    print('✅ Task added to schedule: ${serviceTask.title} for technician $technicianId');
+    
+    return taskResult;
+  }
+
+  // Helper method to map category string to enum
+  TaskCategory _mapCategoryStringToEnum(String? category) {
+    switch (category?.toLowerCase()) {
+      case 'plumbing':
+        return TaskCategory.plumbing;
+      case 'electrical':
+        return TaskCategory.electrical;
+      case 'hvac':
+        return TaskCategory.hvac;
+      case 'appliance':
+        return TaskCategory.appliance;
+      case 'maintenance':
+        return TaskCategory.maintenance;
+      default:
+        return TaskCategory.maintenance;
+    }
+  }
+
+  // Helper method to map priority string to enum
+  TaskPriority _mapPriorityStringToEnum(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'urgent':
+        return TaskPriority.urgent;
+      case 'high':
+        return TaskPriority.high;
+      case 'medium':
+        return TaskPriority.medium;
+      case 'low':
+        return TaskPriority.low;
+      default:
+        return TaskPriority.medium;
+    }
   }
 
   // Remove task notifications for other technicians
@@ -273,6 +333,28 @@ class TaskNotificationService {
       'assignmentType': 'urgent_admin',
     });
 
+    // Create ServiceTask object and add to schedule
+    final serviceTask = ServiceTask(
+      id: requestId, // Use requestId as task ID for consistency
+      title: request['title'] ?? 'Urgent Service Request',
+      description: request['description'] ?? 'No description',
+      category: _mapCategoryStringToEnum(request['category']),
+      priority: TaskPriority.urgent, // Force urgent priority
+      status: TaskStatus.assigned,
+      location: request['location'] ?? 'Unknown Location',
+      building: request['building'],
+      roomNumber: request['room'],
+      assignedTechnicianId: technicianId,
+      createdAt: DateTime.parse(request['createdAt']),
+      requiresReport: request['requiresReport'] ?? true,
+      isUrgent: true,
+    );
+
+    // Add to schedule with priority time slot
+    _scheduleService.addTaskToSchedule(serviceTask, '08:00'); // Earlier slot for urgent tasks
+    
+    print('✅ Urgent task added to schedule: ${serviceTask.title} for technician $technicianId');
+
     // Get student and technician details for notifications
     final studentId = request['userId'];
     final students = await _db.select('users', where: {'userId': studentId});
@@ -336,5 +418,68 @@ class TaskNotificationService {
     }
 
     return stats;
+  }
+}
+
+class AutoAssignmentService {
+  static final AutoAssignmentService _instance = AutoAssignmentService._internal();
+  factory AutoAssignmentService() => _instance;
+  AutoAssignmentService._internal();
+
+  final LocalDatabase _db = LocalDatabase.instance;
+  final TaskNotificationService _taskNotificationService = TaskNotificationService();
+
+  // Handle urgent request escalation
+  Future<bool> handleUrgentRequest(String requestId) async {
+    try {
+      print('🚨 Handling urgent request: $requestId');
+      
+      // Update request to urgent priority
+      await _db.update('requests', 
+        {'priority': 'urgent', 'status': 'pending'}, 
+        where: {'id': requestId}
+      );
+
+      // Immediately notify all available technicians
+      final success = await _taskNotificationService.notifyAvailableTechnicians(requestId);
+      
+      if (success) {
+        print('✅ Urgent request $requestId escalated and notifications sent');
+      } else {
+        print('❌ Failed to send urgent notifications for request $requestId');
+      }
+      
+      return success;
+    } catch (e) {
+      print('❌ Error handling urgent request: $e');
+      return false;
+    }
+  }
+
+  // Assign task to available technicians
+  Future<bool> assignTask(String requestId) async {
+    try {
+      print('🔄 Assigning task: $requestId');
+      
+      // Reset status for reassignment
+      await _db.update('requests', 
+        {'status': 'pending'}, 
+        where: {'id': requestId}
+      );
+
+      // Send notifications to available technicians
+      final success = await _taskNotificationService.notifyAvailableTechnicians(requestId);
+      
+      if (success) {
+        print('✅ Task $requestId assigned and notifications sent');
+      } else {
+        print('❌ Failed to assign task $requestId');
+      }
+      
+      return success;
+    } catch (e) {
+      print('❌ Error assigning task: $e');
+      return false;
+    }
   }
 }

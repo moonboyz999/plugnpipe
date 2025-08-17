@@ -25,7 +25,6 @@ class _PlumberIssuesScreenState extends State<PlumberIssuesScreen> {
     'Faucet problems',
     'Pipe burst',
     'Sewage backup',
-    'Installation needed',
     'Other plumbing issue',
   ];
 

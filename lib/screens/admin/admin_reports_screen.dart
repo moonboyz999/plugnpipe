@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/local_supabase_helper.dart';
 
 class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
@@ -8,13 +9,67 @@ class AdminReportsScreen extends StatefulWidget {
 }
 
 class _AdminReportsScreenState extends State<AdminReportsScreen> {
+  final LocalSupabaseHelper _dbHelper = LocalSupabaseHelper();
   int _selectedFilterIndex = 0;
+  List<Map<String, dynamic>> _reports = [];
+  Map<String, int> _reportStats = {};
+  bool _isLoading = true;
+  
   final List<String> _filterOptions = [
     'All Reports',
     'Pending Only',
     'This Week',
     'Daily Report',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      // Get all requests that have reports
+      final allRequests = await _dbHelper.getRequests();
+      final reportsData = allRequests.where((request) => 
+        request['status'] == 'completed' || 
+        request['report_status'] != null
+      ).toList();
+
+      // Calculate stats
+      final totalReports = reportsData.length;
+      final pendingReports = reportsData.where((r) => r['report_status'] == 'pending').length;
+      final completedReports = reportsData.where((r) => r['report_status'] == 'completed').length;
+      final thisWeekReports = reportsData.where((r) {
+        final date = DateTime.tryParse(r['created_at'] ?? '');
+        if (date == null) return false;
+        final now = DateTime.now();
+        final weekAgo = now.subtract(const Duration(days: 7));
+        return date.isAfter(weekAgo);
+      }).length;
+
+      if (mounted) {
+        setState(() {
+          _reports = reportsData;
+          _reportStats = {
+            'total': totalReports,
+            'pending': pendingReports,
+            'completed': completedReports,
+            'thisWeek': thisWeekReports,
+          };
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading reports: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

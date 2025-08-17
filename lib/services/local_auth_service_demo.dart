@@ -11,6 +11,7 @@ class LocalAuthService {
     // Student accounts
     'student@test.com': {
       'id': 'student_001',
+      'userId': 'student_001',  // Added for compatibility
       'email': 'student@test.com',
       'password': 'student123',
       'name': 'Test Student',
@@ -22,6 +23,7 @@ class LocalAuthService {
     },
     'alice@student.com': {
       'id': 'student_002',
+      'userId': 'student_002',  // Added for compatibility
       'email': 'alice@student.com',
       'password': 'password',
       'name': 'Alice Johnson',
@@ -35,6 +37,7 @@ class LocalAuthService {
     // Technician accounts
     'tech@test.com': {
       'id': 'tech_001',
+      'userId': 'tech_001',  // Added for compatibility
       'email': 'tech@test.com',
       'password': 'tech123',
       'name': 'Test Technician',
@@ -46,6 +49,7 @@ class LocalAuthService {
     },
     'john@tech.com': {
       'id': 'tech_002',
+      'userId': 'tech_002',  // Added for compatibility
       'email': 'john@tech.com',
       'password': 'password',
       'name': 'John Smith',
@@ -59,6 +63,7 @@ class LocalAuthService {
     // Admin accounts
     'admin@test.com': {
       'id': 'admin_001',
+      'userId': 'admin_001',  // Added for compatibility
       'email': 'admin@test.com',
       'password': 'admin123',
       'name': 'Test Admin',
@@ -70,6 +75,7 @@ class LocalAuthService {
     },
     'manager@admin.com': {
       'id': 'admin_002',
+      'userId': 'admin_002',  // Added for compatibility
       'email': 'manager@admin.com',
       'password': 'password',
       'name': 'Sarah Manager',
@@ -171,6 +177,11 @@ class LocalAuthService {
 
   // Get user profile
   Future<Map<String, dynamic>?> getUserProfile() async {
+    return _currentUser;
+  }
+
+  // Get current user (for compatibility with main.dart)
+  Future<Map<String, dynamic>?> getCurrentUser() async {
     return _currentUser;
   }
 

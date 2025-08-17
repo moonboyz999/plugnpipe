@@ -14,6 +14,13 @@ class LocalSupabaseHelper {
     await _db.initialize();
   }
 
+  // Reset database for testing (clears all data and recreates defaults)
+  Future<void> resetDatabaseForTesting() async {
+    await _db.clearAllData();
+    await _db.initialize();
+    print('✅ Database reset complete');
+  }
+
   // Auth methods
   Future<Map<String, dynamic>?> signIn(String userId, String password) async {
     return await _db.authenticateUser(userId, password);
@@ -34,6 +41,11 @@ class LocalSupabaseHelper {
     });
   }
 
+  // Database query methods
+  Future<List<Map<String, dynamic>>> select(String table, {Map<String, dynamic>? where}) async {
+    return await _db.select(table, where: where);
+  }
+
   // Request methods
   Future<Map<String, dynamic>> createRequest(Map<String, dynamic> data) async {
     print('Creating request with data: $data'); // Debug
@@ -42,9 +54,14 @@ class LocalSupabaseHelper {
     final request = await _db.createRequest(data);
     
     print('Created request: $request'); // Debug
+    print('Request status: ${request['status']}'); // Debug
     
     // Send notifications to available technicians instead of auto-assigning
     await _taskNotificationService.notifyAvailableTechnicians(request['id']);
+    
+    // Verify the request was created
+    final allRequests = await _db.getAllRequests();
+    print('Total requests in database: ${allRequests.length}'); // Debug
     
     return request;
   }
@@ -155,17 +172,27 @@ class LocalSupabaseHelper {
   // Get pending requests that need technician action
   Future<List<Map<String, dynamic>>> getPendingRequests() async {
     final allRequests = await _db.getAllRequests();
-    return allRequests.where((request) => 
+    final pendingRequests = allRequests.where((request) => 
       request['status'] == 'pending' || request['status'] == 'escalated'
     ).toList();
+    print('getPendingRequests: Found ${pendingRequests.length} pending requests'); // Debug
+    for (var request in pendingRequests) {
+      print('  - ${request['title']} (${request['status']})'); // Debug
+    }
+    return pendingRequests;
   }
 
   // Get tasks for a specific technician
   Future<List<Map<String, dynamic>>> getTasksForTechnician(String technicianId) async {
     final allRequests = await _db.getAllRequests();
-    return allRequests.where((request) => 
+    final techTasks = allRequests.where((request) => 
       request['assignedTechnicianId'] == technicianId
     ).toList();
+    print('getTasksForTechnician($technicianId): Found ${techTasks.length} assigned tasks'); // Debug
+    for (var task in techTasks) {
+      print('  - ${task['title']} (${task['status']})'); // Debug
+    }
+    return techTasks;
   }
 
   // Technician accepts a task (updated method names for consistency)
@@ -217,6 +244,14 @@ class LocalSupabaseHelper {
 
   Future<bool> updateUser(String id, Map<String, dynamic> data) async {
     return await _db.update('users', data, where: {'id': id});
+  }
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> data) async {
+    return await _db.insert('users', data);
+  }
+
+  Future<bool> deleteUser(String id) async {
+    return await _db.delete('users', where: {'id': id});
   }
 
   // Generic methods for compatibility

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/notification_service.dart';
+import '../../services/local_supabase_helper.dart';
+import '../../services/local_auth_service_demo.dart';
 
 class ElectricalScheduleScreen extends StatefulWidget {
   final String location;
@@ -232,20 +234,88 @@ class _ElectricalScheduleScreenState extends State<ElectricalScheduleScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFA726),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Add notification for pending service
-                NotificationService().addServiceBooking(
-                  serviceType: 'Electrical & Wiring',
-                  location: widget.location,
-                  date:
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                  time: _selectedTimeSlot!,
-                  issues: widget.issues,
-                );
+                try {
+                  // Create the service request using LocalSupabaseHelper
+                  final mockHelper = LocalSupabaseHelper();
 
-                _showSuccessDialog();
+                  final description =
+                      'Electrical & Wiring service requested.\n'
+                      'Issues: ${widget.issues.join(", ")}\n'
+                      'Preferred Date: ${_selectedDate.toLocal().toString().split(' ')[0]}\n'
+                      'Preferred Time: $_selectedTimeSlot';
+
+                  // Parse location for building and room
+                  String building;
+                  String room;
+                  
+                  if (widget.location.contains('Kitchen')) {
+                    building = widget.location.replaceAll(' Kitchen', '');
+                    room = 'Kitchen';
+                  } else {
+                    final locationParts = widget.location.split(' ');
+                    if (locationParts.length >= 2) {
+                      building = locationParts.sublist(0, locationParts.length - 1).join(' ');
+                      room = locationParts.last;
+                    } else {
+                      building = widget.location;
+                      room = 'General Area';
+                    }
+                  }
+
+                  // Get current user ID from auth service
+                  final authService = LocalAuthService();
+                  final currentUser = authService.currentUser;
+                  final currentUserId = currentUser?['userId'] ?? 'student_001';
+
+                  // Set priority based on service type selection
+                  String priority = 'medium';
+                  if (widget.serviceType == 'Urgent Repair') {
+                    priority = 'urgent';
+                  }
+
+                  await mockHelper.createRequest({
+                    'userId': currentUserId,
+                    'title': 'Electrical & Wiring Service',
+                    'description': description,
+                    'category': 'electrical',
+                    'priority': priority,
+                    'location': widget.location,
+                    'building': building,
+                    'room': room,
+                    'requiresReport': false,
+                  });
+
+                  // Also add to notification service for compatibility
+                  NotificationService().addServiceBooking(
+                    serviceType: 'Electrical & Wiring',
+                    location: widget.location,
+                    date:
+                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    time: _selectedTimeSlot!,
+                    issues: widget.issues,
+                  );
+
+                  _showSuccessDialog();
+                } catch (e) {
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Error'),
+                        content: Text('Failed to submit request: $e'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('Confirm'),
             ),
@@ -272,7 +342,8 @@ class _ElectricalScheduleScreenState extends State<ElectricalScheduleScreen> {
             ],
           ),
           content: const Text(
-            'Your electrical service request has been submitted successfully. You will receive a confirmation shortly.',
+            'Your electrical service request has been submitted successfully and notifications have been sent to available technicians.\n\n'
+            'Technicians can now accept or reject your request. You will receive a notification once a technician accepts your task.',
           ),
           actions: [
             ElevatedButton(

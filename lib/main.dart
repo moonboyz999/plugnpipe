@@ -5,8 +5,7 @@ import 'screens/student/student_main_scaffold.dart';
 import 'screens/tech/tech_main_scaffold.dart';
 import 'screens/admin/admin_main_scaffold.dart';
 import 'services/local_database.dart';
-import 'services/local_auth_service.dart';
-import 'utils/database_utils.dart';
+import 'services/local_auth_service_demo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,8 +13,13 @@ void main() async {
   // Initialize Local Database
   await LocalDatabase.instance.initialize();
 
-  // Clear old sample data to avoid confusion with real requests
-  await DatabaseUtils.clearSampleData();
+  // For development: Clear all data to ensure schema consistency
+  if (kDebugMode) {
+    print('🔄 Development mode: Clearing database for schema update...');
+    await LocalDatabase.instance.clearAllData();
+    await LocalDatabase.instance.initialize();
+    print('✅ Database reinitialized with fresh schema');
+  }
 
   if (kDebugMode) print('✅ Local Database initialized successfully');
 

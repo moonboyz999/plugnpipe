@@ -22,38 +22,28 @@ class _MyScheduleScreenState extends State<MyScheduleScreen> {
   List<ScheduledTask> get scheduledTasks {
     final serviceTasks = _scheduleService.scheduledTasks;
     if (serviceTasks.isNotEmpty) {
-      return serviceTasks;
+      // Filter out completed tasks from service tasks
+      return serviceTasks.where((scheduledTask) => 
+        scheduledTask.task.status != TaskStatus.completed &&
+        scheduledTask.status != ScheduleStatus.completed
+      ).toList();
     }
 
-    // Demo data for initial display
+    // Demo data for initial display - only show active/scheduled tasks
     return [
       ScheduledTask(
         task: ServiceTask(
-          id: 'TSK001',
-          title: 'Fridge Repair - Dormitory Kitchen',
-          description: 'Gas Refill required. Issues: Door seal problems.',
-          location: 'Dormitory Kitchen',
-          category: TaskCategory.general,
-          priority: TaskPriority.medium,
-          status: TaskStatus.inProgress,
-          createdAt: DateTime.parse('2025-08-09'),
-        ),
-        scheduledTime: '09:00',
-        status: ScheduleStatus.completed,
-      ),
-      ScheduledTask(
-        task: ServiceTask(
           id: 'TSK002',
-          title: 'Fridge Repair - Dormitory Kitchen',
-          description: 'Gas Refill required. Issues: Door seal problems.',
-          location: 'Dormitory Kitchen',
-          category: TaskCategory.general,
-          priority: TaskPriority.medium,
+          title: 'AC Maintenance - Room 205',
+          description: 'Regular maintenance check and filter replacement.',
+          location: 'Dormitory B Room 205',
+          category: TaskCategory.hvac,
+          priority: TaskPriority.high,
           status: TaskStatus.inProgress,
-          createdAt: DateTime.parse('2025-08-10'),
+          createdAt: DateTime.parse('2025-08-17'),
         ),
-        scheduledTime: '09:00',
-        status: ScheduleStatus.completed,
+        scheduledTime: '14:00',
+        status: ScheduleStatus.scheduled,
       ),
     ];
   }

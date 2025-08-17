@@ -19,8 +19,8 @@ class _WorkHistoryScreenState extends State<WorkHistoryScreen> {
   final int _currentNavIndex = 0; // For navigation bar
   final TaskService _taskService = TaskService();
 
-  // Get completed tasks from TaskService
-  List<ServiceTask> get completedTasks => _taskService.getCompletedTasks();
+  // Get completed tasks with submitted reports from TaskService
+  List<ServiceTask> get completedTasks => _taskService.getCompletedTasksWithSubmittedReports();
   List<ServiceTask> get filteredTasks {
     List<ServiceTask> filtered = completedTasks;
 

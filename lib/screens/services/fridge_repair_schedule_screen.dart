@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../services/notification_service.dart';
 import '../../services/local_supabase_helper.dart';
+import '../../services/local_auth_service_demo.dart';
 
 class FridgeRepairScheduleScreen extends StatefulWidget {
   final String location;
@@ -259,9 +260,10 @@ class _FridgeRepairScheduleScreenState
                           
                           print('Parsed building: $building, room: $room'); // Debug
 
-                          // Get current user ID (default to student_001 for now)
-                          // TODO: Replace with actual current user from auth service
-                          final currentUserId = 'student_001';
+                          // Get current user ID from auth service
+                          final authService = LocalAuthService();
+                          final currentUser = authService.currentUser;
+                          final currentUserId = currentUser?['userId'] ?? 'student_001';
 
                           await mockHelper.createRequest({
                             'userId': currentUserId,

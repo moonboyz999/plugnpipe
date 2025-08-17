@@ -28,8 +28,19 @@ class _StatusReportScreenState extends State<StatusReportScreen> {
     _reportTitleController.text = widget.task.title;
     _timeSpentController.text = '2 hours 30 minutes';
 
-    // In a real app, this would load draft report from database if exists
-    // For now, we'll skip the draft loading functionality
+    // Load existing draft if available
+    _loadExistingDraft();
+  }
+
+  void _loadExistingDraft() {
+    final existingReport = _taskService.getReport(widget.task.id);
+    if (existingReport != null && !existingReport.isSubmitted) {
+      // Load draft data into form fields
+      _workCompletedController.text = existingReport.workCompleted;
+      _materialsUsedController.text = existingReport.materialsUsed;
+      _issuesEncounteredController.text = existingReport.issuesEncountered;
+      _recommendationsController.text = existingReport.recommendations;
+    }
   }
 
   @override
@@ -81,7 +92,7 @@ class _StatusReportScreenState extends State<StatusReportScreen> {
                         ),
                       ),
                       Text(
-                        'Update your report details',
+                        'Complete your status report',
                         style: TextStyle(fontSize: 14, color: Colors.brown),
                       ),
                     ],

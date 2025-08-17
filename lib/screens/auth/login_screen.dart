@@ -3,9 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../student/student_main_scaffold.dart';
 import '../tech/tech_main_scaffold.dart';
 import '../admin/admin_main_scaffold.dart';
-import 'register_screen.dart';
+import 'register_screen_new.dart';
 import 'reset_password_screen.dart';
-// Removed backend auth services; using permissive local auth logic only.
+import '../../services/local_auth_service_demo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +17,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final LocalAuthService _authService = LocalAuthService();
   bool _isLoading = false;
   String _errorMessage = '';
 
@@ -52,18 +53,13 @@ class _LoginScreenState extends State<LoginScreen> {
     await Future.delayed(const Duration(milliseconds: 500));
 
     try {
-      // Hardcoded authentication - accept any credentials
-      bool success = true; // Always succeed
-      String role = 'student'; // Default to student role
-
-      // Check role based on email pattern
-      if (email.toLowerCase().contains('tech')) {
-        role = 'technician';
-      } else if (email.toLowerCase().contains('admin')) {
-        role = 'admin';
-      }
+      // Use actual authentication service with predefined accounts
+      bool success = await _authService.signIn(email: email, password: password);
 
       if (success && mounted) {
+        final currentUser = _authService.currentUser;
+        final role = currentUser?['role'] ?? 'student';
+        
         // Navigate to appropriate screen based on role
         Widget homeScreen;
         switch (role) {
@@ -81,6 +77,10 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => homeScreen),
           (route) => false,
         );
+      } else if (mounted) {
+        setState(() {
+          _errorMessage = 'Invalid email or password. Please use predefined accounts.';
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -148,23 +148,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: TextField(
                         controller: _emailController,
-                        keyboardType: TextInputType.text,
                         decoration: const InputDecoration(
-                          hintText: 'Enter your user ID',
-                          hintStyle: TextStyle(color: Colors.grey),
+                          hintText: 'Enter your email',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
+                            horizontal: 16,
                             vertical: 16,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
                     // Password Label and Field
                     const Text(
                       'PASSWORD:',
@@ -178,24 +184,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: TextField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           hintText: 'Enter your password',
-                          hintStyle: TextStyle(color: Colors.grey),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20,
+                            horizontal: 16,
                             vertical: 16,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    // Register Link
+                    const SizedBox(height: 20),
+
                     Center(
                       child: TextButton(
                         onPressed: () {
@@ -284,8 +296,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           color:
                               _errorMessage.contains('Success') ||
                                   _errorMessage.contains('successful')
-                              ? Colors.green.withOpacity(0.2)
-                              : Colors.red.withOpacity(0.2),
+                              ? Colors.green.withValues(alpha: 0.2)
+                              : Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color:
@@ -308,12 +320,82 @@ class _LoginScreenState extends State<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
+                    
+                    const SizedBox(height: 20),
+                    // Demo Accounts Helper
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '📋 Demo Accounts',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildAccountInfo('👨‍🎓 Student', 'student@test.com', 'student123'),
+                          _buildAccountInfo('🔧 Technician', 'tech@test.com', 'tech123'),
+                          _buildAccountInfo('👨‍💼 Admin', 'admin@test.com', 'admin123'),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAccountInfo(String role, String email, String password) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  role,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                Text(
+                  '$email / $password',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              _emailController.text = email;
+              _passwordController.text = password;
+            },
+            icon: const Icon(Icons.content_copy, size: 16, color: Colors.orange),
+            tooltip: 'Fill credentials',
+          ),
+        ],
       ),
     );
   }

@@ -165,16 +165,6 @@ class _FridgeRepairDetailsScreenState extends State<FridgeRepairDetailsScreen> {
                         });
                       },
                     ),
-                    _ServiceTypeOption(
-                      title: 'Installation',
-                      subtitle: 'Install new fridge or relocate',
-                      selected: _selectedServiceType == 'Installation',
-                      onTap: () {
-                        setState(() {
-                          _selectedServiceType = 'Installation';
-                        });
-                      },
-                    ),
                   ],
                 ),
               ),

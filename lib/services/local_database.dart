@@ -50,29 +50,29 @@ class LocalDatabase {
     final defaultUsers = [
       {
         'id': '1',
-        'userId': 'student123',
-        'password': 'password',
-        'name': 'John Student',
+        'userId': 'student_001',
+        'password': 'student123',
+        'name': 'Test Student',
         'role': 'student',
-        'email': 'student@example.com',
+        'email': 'student@test.com',
         'createdAt': DateTime.now().toIso8601String(),
       },
       {
         'id': '2',
-        'userId': 'tech456',
-        'password': 'password',
-        'name': 'Mike Technician',
+        'userId': 'tech_001',
+        'password': 'tech123',
+        'name': 'Test Technician',
         'role': 'technician',
-        'email': 'tech@example.com',
+        'email': 'tech@test.com',
         'createdAt': DateTime.now().toIso8601String(),
       },
       {
         'id': '3',
-        'userId': 'admin789',
-        'password': 'password',
-        'name': 'Sarah Admin',
+        'userId': 'admin_001',
+        'password': 'admin123',
+        'name': 'Test Admin',
         'role': 'admin',
-        'email': 'admin@example.com',
+        'email': 'admin@test.com',
         'createdAt': DateTime.now().toIso8601String(),
       },
     ];
@@ -187,7 +187,16 @@ class LocalDatabase {
   }
 
   Future<Map<String, dynamic>> createRequest(Map<String, dynamic> requestData) async {
-    return await insert('requests', requestData);
+    // Set default status if not provided
+    if (!requestData.containsKey('status')) {
+      requestData['status'] = 'pending';
+    }
+    
+    print('Database createRequest: $requestData'); // Debug
+    final result = await insert('requests', requestData);
+    print('Database createRequest result: $result'); // Debug
+    
+    return result;
   }
 
   // Task management

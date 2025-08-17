@@ -4,7 +4,12 @@ import '../screens/tech/my_schedule_screen.dart';
 class ScheduleService {
   static final ScheduleService _instance = ScheduleService._internal();
   factory ScheduleService() => _instance;
-  ScheduleService._internal();
+  ScheduleService._internal() {
+    // Register callback with TaskService to remove completed tasks from schedule
+    TaskService.setTaskCompletedCallback((taskId) {
+      removeTaskFromSchedule(taskId);
+    });
+  }
 
   final List<ScheduledTask> _scheduledTasks = [];
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/notification_service.dart';
-import '../../services/local_supabase_helper.dart';
 import '../../services/local_auth_service_demo.dart';
 
 class TechNotificationScreen extends StatefulWidget {

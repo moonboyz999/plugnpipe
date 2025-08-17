@@ -40,15 +40,6 @@ class _FridgeRepairServiceTypeScreenState
                 });
               },
             ),
-            _ServiceTypeOption(
-              title: 'Installation',
-              selected: _selectedType == 'Installation',
-              onTap: () {
-                setState(() {
-                  _selectedType = 'Installation';
-                });
-              },
-            ),
             const Spacer(),
             SizedBox(
               width: double.infinity,

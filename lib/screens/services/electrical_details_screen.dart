@@ -201,16 +201,6 @@ class _ElectricalDetailsScreenState extends State<ElectricalDetailsScreen> {
               },
             ),
             _ServiceTypeOption(
-              title: 'Installation',
-              description: 'New electrical installations and wiring work',
-              selected: _selectedServiceType == 'Installation',
-              onTap: () {
-                setState(() {
-                  _selectedServiceType = 'Installation';
-                });
-              },
-            ),
-            _ServiceTypeOption(
               title: 'Maintenance',
               description: 'Regular maintenance and preventive checks',
               selected: _selectedServiceType == 'Maintenance',

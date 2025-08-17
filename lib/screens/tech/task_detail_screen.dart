@@ -278,6 +278,38 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ],
         );
 
+      case TaskStatus.assigned:
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              _showStartTaskDialog();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.play_arrow, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  'Start Task',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
       case TaskStatus.inProgress:
         return SizedBox(
           width: double.infinity,
@@ -453,6 +485,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         color = Colors.amber;
         text = 'PENDING';
         break;
+      case TaskStatus.assigned:
+        color = Colors.blue;
+        text = 'ASSIGNED';
+        break;
       case TaskStatus.inProgress:
         color = Colors.blue;
         text = 'IN PROGRESS';
@@ -587,6 +623,43 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       ),
     );
     Navigator.pop(context);
+  }
+
+  void _showStartTaskDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start Task'),
+        content: const Text('Are you sure you want to start working on this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startTask();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: const Text('Start Task', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTask() {
+    setState(() {
+      currentStatus = TaskStatus.inProgress;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Task started successfully!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 
   void _showMarkDoneDialog() {

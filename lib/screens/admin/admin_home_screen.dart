@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/admin_escalation_widget.dart';
+import '../../debug_database.dart';
+import '../../services/local_supabase_helper.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -9,6 +11,67 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> {
+  final LocalSupabaseHelper _dbHelper = LocalSupabaseHelper();
+  Map<String, int> _stats = {};
+  bool _isLoading = true;
+  
+  // Task tab management
+  int _selectedTaskTab = 0;
+  List<Map<String, dynamic>> _allTasks = [];
+  List<Map<String, dynamic>> _pendingTasks = [];
+  List<Map<String, dynamic>> _rejectedTasks = [];
+  List<Map<String, dynamic>> _emergencyTasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final requests = await _dbHelper.getRequests();
+      final users = await _dbHelper.getUsers();
+      
+      final pendingRequests = requests.where((r) => r['status'] == 'pending').length;
+      final rejectedRequests = requests.where((r) => r['status'] == 'rejected').length;
+      final urgentRequests = requests.where((r) => r['priority'] == 'urgent').length;
+      final completedTasks = requests.where((r) => r['status'] == 'completed').length;
+      final technicians = users.where((u) => u['role'] == 'technician').length;
+      final students = users.where((u) => u['role'] == 'student').length;
+      
+      // Categorize tasks for the task management section
+      _allTasks = requests;
+      _pendingTasks = requests.where((r) => r['status'] == 'pending').toList();
+      _rejectedTasks = requests.where((r) => r['status'] == 'rejected').toList();
+      _emergencyTasks = requests.where((r) => 
+        r['priority'] == 'urgent' || 
+        r['service_type']?.toString().toLowerCase().contains('emergency') == true
+      ).toList();
+      
+      if (mounted) {
+        setState(() {
+          _stats = {
+            'pending': pendingRequests,
+            'rejected': rejectedRequests,
+            'urgent': urgentRequests,
+            'completed': completedTasks,
+            'technicians': technicians,
+            'students': students,
+            'total_requests': requests.length,
+          };
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,48 +106,56 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
 
               // Statistics Cards Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.2,
-                children: [
-                  _buildStatCard(
-                    icon: Icons.description,
-                    title: 'Reports',
-                    value: '2',
-                    subtitle: 'Submitted today',
-                    color: Colors.blue,
-                    backgroundColor: Colors.blue[50]!,
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
                   ),
-                  _buildStatCard(
-                    icon: Icons.engineering,
-                    title: 'Technicians',
-                    value: '0',
-                    subtitle: 'Active accounts',
-                    color: Colors.green,
-                    backgroundColor: Colors.green[50]!,
-                  ),
-                  _buildStatCard(
-                    icon: Icons.build,
-                    title: 'Service Requests',
-                    value: '12',
-                    subtitle: 'Total requests',
-                    color: Colors.purple,
-                    backgroundColor: Colors.purple[50]!,
-                  ),
-                  _buildStatCard(
-                    icon: Icons.trending_up,
-                    title: 'System Status',
-                    value: '99.9%',
-                    subtitle: 'Uptime',
-                    color: Colors.cyan,
-                    backgroundColor: Colors.cyan[50]!,
-                  ),
-                ],
-              ),
+                )
+              else
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.2,
+                  children: [
+                    _buildStatCard(
+                      icon: Icons.pending_actions,
+                      title: 'Pending Tasks',
+                      value: '${_stats['pending'] ?? 0}',
+                      subtitle: 'Awaiting assignment',
+                      color: Colors.orange,
+                      backgroundColor: Colors.orange[50]!,
+                    ),
+                    _buildStatCard(
+                      icon: Icons.cancel,
+                      title: 'Rejected Tasks',
+                      value: '${_stats['rejected'] ?? 0}',
+                      subtitle: 'Need admin action',
+                      color: Colors.red,
+                      backgroundColor: Colors.red[50]!,
+                    ),
+                    _buildStatCard(
+                      icon: Icons.emergency,
+                      title: 'Urgent Tasks',
+                      value: '${_stats['urgent'] ?? 0}',
+                      subtitle: 'High priority',
+                      color: Colors.purple,
+                      backgroundColor: Colors.purple[50]!,
+                    ),
+                    _buildStatCard(
+                      icon: Icons.engineering,
+                      title: 'Technicians',
+                      value: '${_stats['technicians'] ?? 0}',
+                      subtitle: 'Active accounts',
+                      color: Colors.green,
+                      backgroundColor: Colors.green[50]!,
+                    ),
+                  ],
+                ),
 
               const SizedBox(height: 32),
 
@@ -110,7 +181,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
               // Task Status Section
               const Text(
-                'Task Status',
+                'Task Management',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -119,11 +190,34 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Pending Tasks List
-              ...(_getPendingTasks().map(
-                (task) => _buildPendingTaskCard(task),
-              )),
+              // Task Status Tabs
+              _buildTaskStatusTabs(),
 
+              const SizedBox(height: 20),
+              
+              // Debug Button (Development Only)
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          appBar: AppBar(title: const Text('Database Debug')),
+                          body: DatabaseDebugWidget(),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.bug_report),
+                  label: const Text('Debug Database'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              
               const SizedBox(height: 20),
             ],
           ),
@@ -132,262 +226,304 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
-  // Get list of pending tasks (mock data for demonstration)
-  List<Map<String, dynamic>> _getPendingTasks() {
-    return [
-      {
-        'id': 'TSK001',
-        'title': 'Electrical Repair - Room 201',
-        'assignedTo': 'John Doe',
-        'daysPending': 3,
-        'priority': 'High',
-        'description': 'Faulty electrical outlet in student dormitory',
-        'isEmergency': false,
-      },
-      {
-        'id': 'TSK002',
-        'title': 'Plumbing Issue - Cafeteria',
-        'assignedTo': 'Jane Smith',
-        'daysPending': 5,
-        'priority': 'Medium',
-        'description': 'Leaking pipe under sink needs immediate attention',
-        'isEmergency': false,
-      },
-      {
-        'id': 'TSK003',
-        'title': 'AC Repair - Library',
-        'assignedTo': 'Mike Johnson',
-        'daysPending': 7,
-        'priority': 'High',
-        'description': 'Air conditioning unit not working properly',
-        'isEmergency': false,
-      },
+  Widget _buildTaskStatusTabs() {
+    final tabTitles = ['All Tasks', 'Pending', 'Rejected', 'Emergency'];
+    final taskCounts = [
+      _allTasks.length,
+      _pendingTasks.length,
+      _rejectedTasks.length,
+      _emergencyTasks.length,
     ];
-  }
 
-  Widget _buildPendingTaskCard(Map<String, dynamic> task) {
-    final int daysPending = task['daysPending'];
-    final bool isOverdue = daysPending >= 3;
-    final bool isEmergency = task['isEmergency'];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: isOverdue
-            ? Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1)
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    return Column(
+      children: [
+        // Tab Headers
+        Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task['title'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+          child: Row(
+            children: List.generate(4, (index) {
+              final isSelected = _selectedTaskTab == index;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedTaskTab = index;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFFFFA726) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            tabTitles[index],
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            '(${taskCounts[index]})',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white70 : Colors.black54,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Assigned to: ${task['assignedTo']}',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isEmergency
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : isOverdue
-                      ? Colors.orange.withValues(alpha: 0.1)
-                      : Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isEmergency ? 'EMERGENCY' : '$daysPending days pending',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isEmergency
-                        ? Colors.red[700]
-                        : isOverdue
-                        ? Colors.orange[700]
-                        : Colors.blue[700],
                   ),
                 ),
-              ),
-            ],
+              );
+            }),
           ),
-          const SizedBox(height: 8),
-          Text(
-            task['description'],
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: task['priority'] == 'High'
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : Colors.grey.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '${task['priority']} Priority',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: task['priority'] == 'High'
-                        ? Colors.red[700]
-                        : Colors.grey[700],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (!isEmergency && isOverdue)
-                ElevatedButton.icon(
-                  onPressed: () => _markAsEmergency(task['id']),
-                  icon: const Icon(Icons.warning, size: 16),
-                  label: const Text('Mark Emergency'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              if (!isEmergency && !isOverdue)
-                OutlinedButton(
-                  onPressed: () => _viewTaskDetails(task['id']),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('View Details'),
-                ),
-              if (isEmergency)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.emergency, size: 16, color: Colors.red[700]),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Emergency Task',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Tab Content
+        _buildTaskTabContent(),
+      ],
     );
   }
 
-  void _markAsEmergency(String taskId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Mark as Emergency'),
-          content: Text(
-            'Are you sure you want to mark task $taskId as an emergency? This will notify all available technicians immediately.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+  Widget _buildTaskTabContent() {
+    List<Map<String, dynamic>> currentTasks;
+    switch (_selectedTaskTab) {
+      case 0:
+        currentTasks = _allTasks;
+        break;
+      case 1:
+        currentTasks = _pendingTasks;
+        break;
+      case 2:
+        currentTasks = _rejectedTasks;
+        break;
+      case 3:
+        currentTasks = _emergencyTasks;
+        break;
+      default:
+        currentTasks = _allTasks;
+    }
+
+    if (currentTasks.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.task_alt,
+              size: 48,
+              color: Colors.grey[400],
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showEmergencyNotification(taskId);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
-                foregroundColor: Colors.white,
+            const SizedBox(height: 16),
+            Text(
+              'No tasks found',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
               ),
-              child: const Text('Mark Emergency'),
             ),
           ],
+        ),
+      );
+    }
+
+    return Column(
+      children: currentTasks.take(5).map((task) => _buildTaskCard(task)).toList(),
+    );
+  }
+
+  Widget _buildTaskCard(Map<String, dynamic> task) {
+    final String title = task['title'] ?? 'Untitled Task';
+    final String status = task['status'] ?? 'pending';
+    final String priority = task['priority'] ?? 'medium';
+    final String category = task['category'] ?? 'general';
+    final String location = task['location'] ?? 'Unknown';
+    final bool isUrgent = priority == 'urgent';
+    
+    Color statusColor;
+    Color priorityColor;
+    
+    switch (status) {
+      case 'pending':
+        statusColor = Colors.orange;
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        break;
+      case 'assigned':
+        statusColor = Colors.blue;
+        break;
+      case 'completed':
+        statusColor = Colors.green;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+    
+    switch (priority) {
+      case 'urgent':
+        priorityColor = Colors.red;
+        break;
+      case 'high':
+        priorityColor = Colors.orange;
+        break;
+      case 'medium':
+        priorityColor = Colors.yellow[700]!;
+        break;
+      case 'low':
+        priorityColor = Colors.green;
+        break;
+      default:
+        priorityColor = Colors.grey;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                if (isUrgent)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'URGENT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  location,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(width: 16),
+                Icon(Icons.category, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  category.toUpperCase(),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    border: Border.all(color: statusColor),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: priorityColor.withOpacity(0.1),
+                    border: Border.all(color: priorityColor),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    priority.toUpperCase(),
+                    style: TextStyle(
+                      color: priorityColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (status == 'rejected')
+                  ElevatedButton(
+                    onPressed: () => _escalateTask(task['id']),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    child: const Text('Escalate', style: TextStyle(fontSize: 12)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _escalateTask(String taskId) async {
+    try {
+      // Update task priority to urgent
+      await _dbHelper.updateRequest(taskId, {'priority': 'urgent'});
+      
+      // Reload data to reflect changes
+      await _loadDashboardData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Task escalated to urgent priority'),
+            backgroundColor: Colors.orange,
+          ),
         );
-      },
-    );
-  }
-
-  void _viewTaskDetails(String taskId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening task details for $taskId'),
-        backgroundColor: const Color(0xFFFFA726),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showEmergencyNotification(String taskId) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Task $taskId marked as emergency! All technicians notified.',
-        ),
-        backgroundColor: Colors.red[600],
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'OK',
-          textColor: Colors.white,
-          onPressed: () {},
-        ),
-      ),
-    );
-
-    // Refresh the UI to show updated task status
-    setState(() {});
+      }
+    } catch (e) {
+      print('Error escalating task: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to escalate task'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStatCard({

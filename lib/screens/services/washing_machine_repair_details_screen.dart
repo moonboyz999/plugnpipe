@@ -166,16 +166,6 @@ class _WashingMachineRepairDetailsScreenState
                         });
                       },
                     ),
-                    _ServiceTypeOption(
-                      title: 'Installation',
-                      subtitle: 'Install new washing machine or relocate',
-                      selected: _selectedServiceType == 'Installation',
-                      onTap: () {
-                        setState(() {
-                          _selectedServiceType = 'Installation';
-                        });
-                      },
-                    ),
                   ],
                 ),
               ),

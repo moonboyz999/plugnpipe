@@ -1,9 +1,9 @@
 // Enums for task management
-enum TaskStatus { pending, inProgress, completed, cancelled }
+enum TaskStatus { pending, assigned, inProgress, completed, cancelled }
 
 enum TaskPriority { low, medium, high, urgent }
 
-enum TaskCategory { plumbing, electrical, hvac, general }
+enum TaskCategory { plumbing, electrical, hvac, general, appliance, maintenance }
 
 enum TaskNotificationType { newTask, taskUpdate, reminder }
 
@@ -101,7 +101,13 @@ class StatusReport {
 class TaskService {
   static final TaskService _instance = TaskService._internal();
   factory TaskService() => _instance;
-  TaskService._internal();
+  
+  bool _isInitialized = false;
+  
+  TaskService._internal() {
+    // Service initialized without sample data
+    _isInitialized = true;
+  }
 
   // Application data
   final List<ServiceTask> _tasks = [];
@@ -116,6 +122,16 @@ class TaskService {
   // Get completed tasks
   List<ServiceTask> getCompletedTasks() {
     return _tasks.where((task) => task.status == TaskStatus.completed).toList();
+  }
+
+  // Get completed tasks with submitted reports (for work history)
+  List<ServiceTask> getCompletedTasksWithSubmittedReports() {
+    return _tasks.where((task) {
+      final report = _reports[task.id];
+      return task.status == TaskStatus.completed && 
+             report != null && 
+             report.isSubmitted;
+    }).toList();
   }
 
   // Get notifications
@@ -187,12 +203,46 @@ class TaskService {
     return _tasks.where((task) => task.priority == priority).toList();
   }
 
+  // Callback for when tasks are completed (to notify schedule service)
+  static Function(String taskId)? _onTaskCompleted;
+  
+  static void setTaskCompletedCallback(Function(String taskId) callback) {
+    _onTaskCompleted = callback;
+  }
+
   // Update task status
   void updateTaskStatus(String taskId, TaskStatus newStatus) {
     final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
     if (taskIndex != -1) {
-      // In a real app, you would update the task in the database
-      // For now, we'll just add a notification
+      final oldTask = _tasks[taskIndex];
+      
+      // Create updated task with new status
+      final updatedTask = ServiceTask(
+        id: oldTask.id,
+        title: oldTask.title,
+        description: oldTask.description,
+        category: oldTask.category,
+        priority: oldTask.priority,
+        status: newStatus,
+        location: oldTask.location,
+        building: oldTask.building,
+        roomNumber: oldTask.roomNumber,
+        assignedTechnicianId: oldTask.assignedTechnicianId,
+        createdAt: oldTask.createdAt,
+        estimatedCompletion: oldTask.estimatedCompletion,
+        actualCompletion: newStatus == TaskStatus.completed ? DateTime.now() : oldTask.actualCompletion,
+        requiresReport: oldTask.requiresReport,
+      );
+      
+      // Update the task in the list
+      _tasks[taskIndex] = updatedTask;
+      
+      // If task is completed, notify schedule service
+      if (newStatus == TaskStatus.completed && _onTaskCompleted != null) {
+        _onTaskCompleted!(taskId);
+      }
+      
+      // Add notification
       _notifications.add(
         TaskNotification(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -224,12 +274,19 @@ class TaskService {
 
   // Get tasks with draft reports
   List<ServiceTask> getTasksWithDraftReports() {
-    return _tasks.where((task) => task.status == TaskStatus.completed).toList();
+    return _tasks.where((task) {
+      final report = _reports[task.id];
+      return report != null && !report.isSubmitted;
+    }).toList();
   }
 
-  // Get completed tasks needing reports
+  // Get completed tasks needing reports (no report or only draft reports)
   List<ServiceTask> getCompletedTasksNeedingReports() {
-    return _tasks.where((task) => task.status == TaskStatus.completed).toList();
+    return _tasks.where((task) {
+      final report = _reports[task.id];
+      return task.status == TaskStatus.completed && 
+             (report == null || !report.isSubmitted);
+    }).toList();
   }
 
   // Save draft report

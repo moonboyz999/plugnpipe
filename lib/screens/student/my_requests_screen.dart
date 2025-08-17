@@ -122,11 +122,14 @@ class _MyRequestsScreenState extends State<MyRequestsScreen> {
   }
 
   Widget _buildRequestCard(Map<String, dynamic> request) {
-    final status = request['status'] as String;
-    final priority = request['priority'] as String;
+    final status = request['status'] as String? ?? 'pending';
+    final priority = request['priority'] as String? ?? 'medium';
     final assignedTechnician =
         request['assigned_technician'] as Map<String, dynamic>?;
-    final createdAt = DateTime.parse(request['created_at'] as String);
+    final createdAtString = request['createdAt'] as String? ?? request['created_at'] as String?;
+    final createdAt = createdAtString != null 
+        ? DateTime.parse(createdAtString) 
+        : DateTime.now();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),

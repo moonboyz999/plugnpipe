@@ -28,7 +28,6 @@ class _ElectricalIssuesScreenState extends State<ElectricalIssuesScreen> {
     {'text': 'Wiring problems', 'selected': false},
     {'text': 'Electrical panel issues', 'selected': false},
     {'text': 'Sparking outlets or switches', 'selected': false},
-    {'text': 'Electrical installation needed', 'selected': false},
     {'text': 'Urgent electrical repair', 'selected': false},
     {'text': 'Other electrical issues', 'selected': false},
   ];
