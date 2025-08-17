@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "2625712671",
+    "project_id": "plugnpipe",
+    "storage_bucket": "plugnpipe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2625712671:android:cb6ee8e6ce11551399db2a",
+        "android_client_info": {
+          "package_name": "com.example.plugnpipe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByBlQpSKFEYyNT_kUKYfZU1X3NqxJKT20"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
